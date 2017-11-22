@@ -6,7 +6,7 @@ from utils import load_chorales
 from model import get_model
 
 def train(args):
-    P = load_chorales.load(args.train_file, args.voice_num, args.seq_length, args.batch_size)
+    P = load_chorales.load(args.train_file, args.voice_num, args.seq_length, args.batch_size, voices_to_zero=args.voices_to_zero)
     args.x_dim = P['x_train'].shape[-1]
     args.y_dim = P['y_train'].shape[-1]
     print "Training X with size {} to predict Y with size {}".format(P['x_train'].shape, P['y_train'].shape)
@@ -28,39 +28,53 @@ def train(args):
 
 if __name__ == '__main__':
     """
+    soprano      0.56
+    ------------------
+    soprano-z1   0.56
+    soprano-z2   0.55
+    soprano-z3   0.57
+    ------------------
+    soprano-z12  0.49
+    soprano-z13  0.50
+    soprano-z23  0.49
+    ------------------
+    soprano-z123 0.35
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('run_name', type=str,
-                help='tag for current run')
+        help='tag for current run')
     parser.add_argument('--batch_size', type=int, default=100,
-                help='batch size')
+        help='batch size')
     parser.add_argument('--optimizer', type=str, default='adam',
-                help='optimizer name') # 'rmsprop'
+        help='optimizer name') # 'rmsprop'
     parser.add_argument('--num_epochs', type=int, default=200,
         help='number of epochs')
     parser.add_argument('--voice_num', type=int,
         default=0, choices=range(4), 
         help='voice number to predict (0 = soprano, ..., 4 = bass)')
+    parser.add_argument('--voices_to_zero', type=int,
+        default=0, choices=range(4), nargs='+',
+        help='voice number to predict (0 = soprano, ..., 4 = bass)')
     parser.add_argument('--embed_dim', type=int, default=10,
-                help='input dim')
+        help='input dim')
     parser.add_argument('--latent_dim', type=int, default=10,
-                help='latent dim')
+        help='latent dim')
     parser.add_argument('--seq_length', type=int, default=4,
-                help='latent dim')
+        help='latent dim')
     parser.add_argument('--patience', type=int, default=5,
-                help='# of epochs, for early stopping')
-    parser.add_argument('--log_dir', type=str, default='../data/logs',
-                help='basedir for saving log files')
+        help='# of epochs, for early stopping')
+    parser.add_argument('--log_dir', type=str,
+        default='../data/logs', help='basedir for saving log files')
     parser.add_argument('--sample_dir', type=str,
-                default='../data/output',
-                help='basedir for saving samples')
+        default='../data/output',
+        help='basedir for saving samples')
     parser.add_argument('--model_dir', type=str,
-                default='../data/models',
-                help='basedir for saving model weights')
+        default='../data/models',
+        help='basedir for saving model weights')
     parser.add_argument('--model_file', type=str, default=None,
-                help='file to load weights')
+        help='file to load weights')
     parser.add_argument('--train_file', type=str,
-                default='../data/input/JSB Chorales_parts.pickle',
-                help='file of training data (.pickle)')
+        default='../data/input/JSB Chorales_parts.pickle',
+        help='file of training data (.pickle)')
     args = parser.parse_args()
     print train(args)[1]

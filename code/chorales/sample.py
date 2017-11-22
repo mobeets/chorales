@@ -38,7 +38,7 @@ def generate_sample(model, X, nt, seq_length, y_dim, ranges, voice_num):
 
 def sample(args):
     model, margs = load_model(args.model_file)
-    P = load_chorales.load(margs['train_file'], margs['voice_num'], margs['seq_length'], margs['batch_size'])
+    P = load_chorales.load(margs['train_file'], margs['voice_num'], margs['seq_length'], margs['batch_size'], voices_to_zero=margs['voices_to_zero'])
     for i in xrange(args.nsamples):
         ind = 100*i
         X = P['x_valid'][ind:ind+args.sample_length,:,:]

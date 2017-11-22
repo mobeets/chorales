@@ -21,7 +21,7 @@ def song_to_pianoroll(song, offset=21):
         # assert False
     for notes in song:
         roll = np.zeros(88)
-        roll[[n-offset for n in notes if n != -1]] = 1.
+        roll[[int(n-offset) for n in notes if n != -1]] = 1.
         rolls.append(roll)
     return np.vstack(rolls)
 

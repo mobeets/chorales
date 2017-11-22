@@ -99,7 +99,7 @@ def y_to_onehot(y, num_notes):
     y = to_categorical(y, num_classes=num_notes+2)
     return y[:,1:] # remove dne col -> all zeros
 
-def split_X_and_y(D, yind, make_onehot=True):
+def split_X_and_y(D, yind, inds_to_zero=None, make_onehot=True):
     """
     separate X from y
     """
@@ -107,6 +107,8 @@ def split_X_and_y(D, yind, make_onehot=True):
         X = D[k]
         # make X and Y
         y = X[:,0,yind].copy()
+        if inds_to_zero is not None:
+            X[:,0,inds_to_zero] = 0 # 0 -> dne
         X[:,0,yind] = 0 # 0 -> dne
         if make_onehot:
             y = y_to_onehot(y, D['ranges'][yind])
@@ -116,7 +118,10 @@ def split_X_and_y(D, yind, make_onehot=True):
     return D
 
 def onehot_to_y(y, offset):
-    ind = np.where(y)[1]
+    row, ind = np.where(y)
+    if len(row) == 0:
+        # zero'd out part
+        return -1*np.ones(len(y))
     assert len(ind) == len(y)
     ix0 = ind == 0
     ind += (offset-1)
@@ -148,7 +153,7 @@ def write_songs(songs):
         fnm = '../data/output/sample_{}.mid'.format(i)
         write_song(song, fnm, isHalfAsSlow=True)
 
-def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_length=8, batch_size=1):
+def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_length=8, batch_size=1, voices_to_zero=[1]):
     """
     load data by parts
     where you predict one part using the other parts
@@ -156,7 +161,7 @@ def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_
     """
     d = pickle.load(open(train_file))
     D = make_hist_and_offset(d, seq_length, batch_size)
-    D = split_X_and_y(D, voice_num)
+    D = split_X_and_y(D, voice_num, inds_to_zero=voices_to_zero)
     write_songs(d['train'][:10])
     return D
 
