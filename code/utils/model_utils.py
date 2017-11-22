@@ -4,7 +4,6 @@ import numpy as np
 from keras import losses
 from keras import backend as K
 from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping, Callback
-from utils.weightnorm import AdamWithWeightnorm, data_based_init
 
 bincrossentropy = lambda x, xhat: (x*np.log(np.maximum(1e-15, xhat)) + (1-x)*np.log(np.maximum(1e-15, 1-xhat)))
 
@@ -165,6 +164,3 @@ def save_model_in_pieces(model, args):
     # save model args
     outfile = os.path.join(args.model_dir, args.run_name + '.json')
     json.dump(vars(args), open(outfile, 'w'))
-
-def LL_frame(y, yhat):
-    return 88*losses.binary_crossentropy(y, yhat)

@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from keras import backend as K
 from keras.models import Model
@@ -14,3 +15,15 @@ def get_model(batch_size, x_dim, y_dim, seq_length, latent_dim, optimizer):
         loss='categorical_crossentropy',
         metrics=['accuracy'])
     return mdl
+
+def load_model(model_file, batch_size=1):
+    """
+    there's a curently bug in the way keras loads models from .yaml
+        that has to do with Lambdas
+    so this is a hack for now...
+    """
+    margs = json.load(open(model_file.replace('.h5', '.json')))
+    batch_size = batch_size if batch_size is not None else margs['batch_size']
+    model = get_model(batch_size, margs['x_dim'], margs['y_dim'], margs['seq_length'], margs['latent_dim'], margs['optimizer'])
+    model.load_weights(model_file)
+    return model, margs

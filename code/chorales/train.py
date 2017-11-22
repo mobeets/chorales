@@ -37,7 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('--optimizer', type=str, default='adam',
                 help='optimizer name') # 'rmsprop'
     parser.add_argument('--num_epochs', type=int, default=200,
-                help='number of epochs')
+        help='number of epochs')
     parser.add_argument('--voice_num', type=int,
         default=0, choices=range(4), 
         help='voice number to predict (0 = soprano, ..., 4 = bass)')

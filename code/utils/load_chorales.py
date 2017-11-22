@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 from music21 import key
 from keras.utils import to_categorical
+from utils.midi_utils import write_song
 
 def findOffsetToStandardize(curKey, keyGoal):
     if type(curKey) is str:
@@ -63,7 +64,6 @@ def make_hist_and_offset(d, seq_length, batch_size):
         for song in d[k]:
             # -2 means not given, or nan
             xs = np.dstack([np.roll(song, i, axis=0) for i in xrange(seq_length)])
-            xs0 = xs.copy()
             xs[:(seq_length-1),:,1:] = -2 # dne
             xss.append(xs)
         X = np.vstack(xss)
@@ -72,9 +72,9 @@ def make_hist_and_offset(d, seq_length, batch_size):
         # shift so everything starts at 0
         ix1 = X == -1
         ix2 = X == -2
-        X -= (offsets-1) # now all start at 1
-        X[ix1] = 0 # -1 -> 0 for silence
-        X[ix2] = -1 # -2 -> -1 for dne
+        X -= (offsets-2) # now all start at 2
+        X[ix1] = 1 # -1 -> 1 for silence
+        X[ix2] = 0 # -2 -> 0 for dne
 
         # ignore ends to be divisible by batch size
         n = (len(X) / batch_size)*batch_size
@@ -83,7 +83,7 @@ def make_hist_and_offset(d, seq_length, batch_size):
         D[k] = X
     return D
 
-def x_to_onehot(X, num_notes):
+def X_to_onehot(X, num_notes):
     xs = []
     for i in xrange(X.shape[-1]):
         xcs = []
@@ -96,23 +96,57 @@ def x_to_onehot(X, num_notes):
     return np.dstack(xs) # [n x seq_length x nnotes]
 
 def y_to_onehot(y, num_notes):
-    return to_categorical(y, num_classes=num_notes+1)
+    y = to_categorical(y, num_classes=num_notes+2)
+    return y[:,1:] # remove dne col -> all zeros
 
-def split_X_and_Y(D, yind, make_onehot=True):
+def split_X_and_y(D, yind, make_onehot=True):
     """
-    separate X from Y
+    separate X from y
     """
     for k in ['train', 'test', 'valid']:
         X = D[k]
         # make X and Y
-        Y = X[:,0,yind].copy()
-        X[:,0,yind] = -1 # -1 -> dne
+        y = X[:,0,yind].copy()
+        X[:,0,yind] = 0 # 0 -> dne
         if make_onehot:
-            Y = y_to_onehot(Y, D['ranges'][yind])
-            X = x_to_onehot(X, D['ranges'])
+            y = y_to_onehot(y, D['ranges'][yind])
+            X = X_to_onehot(X, D['ranges'])
         D['x_' + k] = X
-        D['y_' + k] = Y
+        D['y_' + k] = y
     return D
+
+def onehot_to_y(y, offset):
+    ind = np.where(y)[1]
+    assert len(ind) == len(y)
+    ix0 = ind == 0
+    ind += (offset-1)
+    ind[ix0] = -1
+    return ind
+
+def X_and_y_to_song(X, y, yind, offsets, ranges):
+    x = X[:,0,:] # drop history
+    voice_inds = np.hstack([i*np.ones(r+1) for i,r in enumerate(ranges)])
+    song = []
+    for i,offset in enumerate(offsets):
+        # each voice is a matrix of one-hot vectors
+        if i == yind:
+            part = y
+        else:
+            part = x[:,voice_inds == i]
+        # convert one-hot vectors to note indices
+        inds = onehot_to_y(part, offset)
+        song.append(inds)
+    return np.vstack(song).T # [n x 4]
+
+def test_songs_are_invertible(D, d):
+    song0 = np.vstack([np.vstack(x) for x in d['train']])
+    song1 = X_and_y_to_song(D['x_train'], D['y_train'], voice_num, D['offsets'], D['ranges'])
+    assert (song0 - song1).sum() == 0
+
+def write_songs(songs):
+    for i, song in enumerate(songs):
+        fnm = '../data/output/sample_{}.mid'.format(i)
+        write_song(song, fnm, isHalfAsSlow=True)
 
 def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_length=8, batch_size=1):
     """
@@ -122,7 +156,8 @@ def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_
     """
     d = pickle.load(open(train_file))
     D = make_hist_and_offset(d, seq_length, batch_size)
-    D = split_X_and_Y(D, voice_num)
+    D = split_X_and_y(D, voice_num)
+    write_songs(d['train'][:10])
     return D
 
 if __name__ == '__main__':
