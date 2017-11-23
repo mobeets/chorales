@@ -55,8 +55,6 @@ if __name__ == '__main__':
     parser.add_argument('--voices_to_zero', type=int,
         default=0, choices=range(4), nargs='+',
         help='voice number to predict (0 = soprano, ..., 4 = bass)')
-    parser.add_argument('--embed_dim', type=int, default=10,
-        help='input dim')
     parser.add_argument('--latent_dim', type=int, default=10,
         help='latent dim')
     parser.add_argument('--seq_length', type=int, default=4,
@@ -65,14 +63,9 @@ if __name__ == '__main__':
         help='# of epochs, for early stopping')
     parser.add_argument('--log_dir', type=str,
         default='../data/logs', help='basedir for saving log files')
-    parser.add_argument('--sample_dir', type=str,
-        default='../data/output',
-        help='basedir for saving samples')
     parser.add_argument('--model_dir', type=str,
         default='../data/models',
         help='basedir for saving model weights')
-    parser.add_argument('--model_file', type=str, default=None,
-        help='file to load weights')
     parser.add_argument('--train_file', type=str,
         default='../data/input/JSB Chorales_parts.pickle',
         help='file of training data (.pickle)')
