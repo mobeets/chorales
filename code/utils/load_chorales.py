@@ -187,14 +187,9 @@ def onehot_to_y(y, offset):
     ind[ix0] = SILENCE
     return ind
 
-def X_and_y_to_song(X, y, yind, offsets, ranges, add_beats, add_holds):
+def X_and_y_to_song(X, y, yind, offsets, ranges):
     x = X[:,0,:] # drop history
-    if add_beats:
-        assert False
-        pass # rm from X
-    if add_holds:
-        assert False
-        pass # rm from X
+    x = x[:,:ranges.sum()+4]
     voice_inds = np.hstack([i*np.ones(r+1) for i,r in enumerate(ranges)])
     song = []
     for i,offset in enumerate(offsets):
@@ -208,7 +203,7 @@ def X_and_y_to_song(X, y, yind, offsets, ranges, add_beats, add_holds):
         song.append(inds)
     return np.vstack(song).T # [n x 4]
 
-def test_songs_are_invertible(D, d):
+def test_songs_are_invertible(D, d, voice_num):
     song0 = np.vstack([np.vstack(x) for x in d['train']])
     song1 = X_and_y_to_song(D['x_train'], D['y_train'], voice_num, D['offsets'], D['ranges'])
     assert (song0 - song1).sum() == 0
@@ -227,6 +222,7 @@ def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_
     d = pickle.load(open(train_file))
     D = make_hist_and_offset(d, seq_length, batch_size, add_beats, add_holds)
     D = make_X_and_y(D, voice_num, add_beats, add_holds, inds_to_zero=voices_to_zero)
+    test_songs_are_invertible(D, d, voice_num)
     write_songs(d['train'][:10])
     return D
 
