@@ -13,11 +13,13 @@ def train(args):
     callbacks = get_callbacks(args, patience=args.patience)
 
     model = get_model(args.batch_size, args.x_dim, args.y_dim,
-        args.seq_length, args.latent_dim, args.optimizer)
+        args.seq_length, args.latent_dim_1, args.latent_dim_1,
+        args.activation, args.dropout, args.optimizer)
 
     save_model_in_pieces(model, args)
     history = model.fit(P['x_train'], P['y_train'],
             shuffle=True,
+            verbose=0,
             epochs=args.num_epochs,
             batch_size=args.batch_size,
             callbacks=callbacks,
@@ -28,17 +30,6 @@ def train(args):
 
 if __name__ == '__main__':
     """
-    soprano      0.56
-    ------------------
-    soprano-z1   0.56
-    soprano-z2   0.55
-    soprano-z3   0.57
-    ------------------
-    soprano-z12  0.49
-    soprano-z13  0.50
-    soprano-z23  0.49
-    ------------------
-    soprano-z123 0.35
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('run_name', type=str,
@@ -55,10 +46,20 @@ if __name__ == '__main__':
     parser.add_argument('--voices_to_zero', type=int,
         default=0, choices=range(4), nargs='+',
         help='voice number to predict (0 = soprano, ..., 4 = bass)')
-    parser.add_argument('--latent_dim', type=int, default=10,
-        help='latent dim')
+    parser.add_argument("--use_beats", action="store_true", 
+                help="include beat info in X")
+    parser.add_argument("--use_holds", action="store_true", 
+                help="include note hold info in X")
+    parser.add_argument('--latent_dim_1', type=int, default=10,
+        help='latent dim 1')
+    parser.add_argument('--latent_dim_2', type=int, default=10,
+        help='latent dim 2')
     parser.add_argument('--seq_length', type=int, default=4,
         help='latent dim')
+    parser.add_argument('--activation', type=str, default='relu',
+        help='activation function')
+    parser.add_argument('--dropout', type=float, default=0.0,
+        help='dropout (proportion)')
     parser.add_argument('--patience', type=int, default=5,
         help='# of epochs, for early stopping')
     parser.add_argument('--log_dir', type=str,
