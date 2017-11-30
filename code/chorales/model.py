@@ -31,11 +31,14 @@ def load_model(model_file, batch_size=1):
     """
     margs = json.load(open(model_file.replace('.h5', '.json')))
     batch_size = batch_size if batch_size is not None else margs['batch_size']
-    if 'latent_dim_1' not in margs: # old version
+    if 'latent_dim_1' not in margs: # older version
         margs['latent_dim_1'] = margs['latent_dim']
         margs['latent_dim_2'] = margs['latent_dim']
         margs['activation'] = 'relu'
         margs['dropout'] = 0.0
+    if 'add_beats' not in margs: # old version
+        margs['add_beats'] = False
+        margs['add_holds'] = False
     model = get_model(batch_size, margs['x_dim'], margs['y_dim'], margs['seq_length'], margs['latent_dim_1'], margs['latent_dim_2'], margs['activation'], margs['dropout'], margs['optimizer'])
     model.load_weights(model_file)
     return model, margs

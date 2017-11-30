@@ -28,10 +28,10 @@ def main():
 
         if i == 0:
             # load first voice, with the other voices zero'd
-            P = load_chorales.load(margs['train_file'], voice_num, margs['seq_length'], margs['batch_size'], voices_to_zero=voice_nums[1:])
+            P = load_chorales.load(margs['train_file'], voice_num, margs['seq_length'], margs['batch_size'], voices_to_zero=voice_nums[1:], add_beats=margs['add_beats'], add_holds=margs['add_holds'])
             X = P['x_valid'][start_ind:start_ind+sample_length,:,:]
             y = P['y_valid'][start_ind:start_ind+sample_length]
-            P0 = load_chorales.load(margs['train_file'], voice_num, margs['seq_length'], margs['batch_size'], voices_to_zero=[])
+            P0 = load_chorales.load(margs['train_file'], voice_num, margs['seq_length'], margs['batch_size'], voices_to_zero=[], add_beats=margs['add_beats'], add_holds=margs['add_holds'])
             X0 = P0['x_valid'][start_ind:start_ind+sample_length,:,:]
             y0 = P0['y_valid'][start_ind:start_ind+sample_length]
             write_sample(X0, y0, P0, run_name, sample_dir, margs, postfix='_{}_v0312_true'.format(start_ind))
