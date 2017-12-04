@@ -6,7 +6,7 @@ def pianoroll_to_song(roll, offset=21):
     f = lambda x: (np.where(x)[0]+offset).tolist()
     return [f(s) for s in roll]
 
-def chorale_to_pianoroll(chorale, mult=1, nt=None, get_beats=False, hold_notes=False):
+def chorale_to_pianoroll(chorale, mult, nt=None, get_beats=False, hold_notes=False):
 	"""
 	mult == 1 means quarter notes, mult == 2 means eighth notes, etc.
 
@@ -19,8 +19,11 @@ def chorale_to_pianoroll(chorale, mult=1, nt=None, get_beats=False, hold_notes=F
 	xss = chorale.chordify()
 	if nt is None:
 		nt = int(xss.duration.quarterLength*mult)+1
-	roll = np.zeros((nt, 128))
-	is_held = False*np.ones(nt)
+	nd = 128
+	if hold_notes:
+		nd += 1 # add extra note number
+	roll = np.zeros((nt, nd))
+	# is_held = False*np.ones(nt)
 	beats = np.nan*np.ones(nt)
 	for xs in xss.flat.notes: # e.g. xs is <music21.chord.Chord G4 D4 B3 G2>
 		# onset of note, in time steps
@@ -34,8 +37,8 @@ def chorale_to_pianoroll(chorale, mult=1, nt=None, get_beats=False, hold_notes=F
 		if hold_notes:
 			dur = int(xs.duration.quarterLength*mult)
 			for i in range(1,dur):
-				roll[ct+i,ps] = 1
-				is_held[ct+i] = True
+				roll[ct+i,-1] = 1
+				# is_held[ct+i] = True
 
 		# quantize beat, e.g., 3.5 -> 3.0 if mult==1
 		# beats[ct] = int(xs.beat*mult)*1.0/float(mult)
@@ -52,15 +55,19 @@ def chorale_to_pianoroll(chorale, mult=1, nt=None, get_beats=False, hold_notes=F
 
 	# return desired number of outputs
 	if get_beats:
-		if hold_notes:
-			output = roll, is_held, beats
-		else:
-			output = roll, beats
-	elif hold_notes:
-		output = roll, is_held
+		return roll, beats
 	else:
-		output = roll
-	return output
+		return roll
+	# if get_beats:
+	# 	if hold_notes:
+	# 		output = roll, is_held, beats
+	# 	else:
+	# 		output = roll, beats
+	# elif hold_notes:
+	# 	output = roll, is_held
+	# else:
+	# 	output = roll
+	# return output
 
 def make_beats(nbeats, start_beat, maxbeat, mult):
 	delta = 1/float(mult)
@@ -81,7 +88,7 @@ def make_beats_from_template(all_beats, mult):
 	maxbeat = np.nanmax(B).astype(int)
 	return make_beats(nbeats, start_beat, maxbeat, mult)
 
-def parse_chorales_with_parts(mult=1, n=None):
+def parse_chorales_with_parts(mult, n=None):
 	"""
 	mult == 1 means quarter notes, mult == 2 means eighth notes, etc.
 	"""
@@ -89,7 +96,7 @@ def parse_chorales_with_parts(mult=1, n=None):
 	songs = []
 	keys = []
 	timesigs = []
-	Holds = []
+	# Holds = []
 	Beats = []
 	for chorale in corpus.chorales.Iterator():
 		if n is not None and i >= n:
@@ -103,15 +110,15 @@ def parse_chorales_with_parts(mult=1, n=None):
 		maxT = 0
 		names = ['soprano', 'alto', 'tenor', 'bass']
 		all_beats = []
-		all_holds = []
+		# all_holds = []
 		for part in chorale.parts:
 			ind = [x for x in names if x in str(part).lower()]
 			if not ind and i not in [5, 13, 149, 164, 166]:
 				# manually confirmed these chorales are fine
 				continue
-			roll, holds, beats = chorale_to_pianoroll(part, mult=mult, nt=T, hold_notes=True, get_beats=True)
+			roll, beats = chorale_to_pianoroll(part, mult=mult, nt=T, hold_notes=True, get_beats=True)
 			all_beats.append(beats)
-			all_holds.append(holds)
+			# all_holds.append(holds)
 
 			# keep track of actual length
 			curT = np.where(roll.sum(axis=-1) > 0)[0].max()+1
@@ -128,25 +135,27 @@ def parse_chorales_with_parts(mult=1, n=None):
 		
 		# join beats and holds
 		beats = make_beats_from_template(all_beats, mult)
-		holds = np.vstack(all_holds).T
+		# holds = np.vstack(all_holds).T
 
 		# shorten if T was too long
 		beats = beats[:maxT]
-		holds = holds[:maxT]
+		# holds = holds[:maxT]
 		cursongs = [song[:maxT] for song in cursongs]
 
 		# combine parts (-1 means silent)
 		cursongs = [[y[0] if y else -1 for y in s] for s in zip(*cursongs)]
 		songs.append(cursongs)
-		Holds.append(holds)
+		# Holds.append(holds)
 		Beats.append(beats)
 		keys.append(key)
 		timesigs.append(timesig)
 		i += 1
 	return {'songs': songs, 'keys': keys, 'beats': Beats,
-		'holds': Holds, 'timesigs': timesigs}
+		'timesigs': timesigs}
+	# return {'songs': songs, 'keys': keys, 'beats': Beats,
+	# 	'holds': Holds, 'timesigs': timesigs}
 
-def parse_chorales(mult=1):
+def parse_chorales(mult):
 	"""
 	mult == 1 means quarter notes, mult == 2 means eighth notes, etc.
 	"""
@@ -190,10 +199,9 @@ def cv_data_split(data, (tr,va,te)):
 		D['train' + postfix] = items[:tr_ind]
 		D['test' + postfix] = items[tr_ind:te_ind]
 		D['valid' + postfix] = items[te_ind:]
-
 	return D
 
-def main(outfile='../data/input/JSB Chorales_parts_and_more2', keep_parts=True, mult=2):
+def main(outfile='../data/input/JSB Chorales_parts_with_holds', keep_parts=True, mult=2):
 	"""
 	mult == 1 means quarter notes, mult == 2 means eighth notes, etc.
 	"""

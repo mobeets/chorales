@@ -88,7 +88,7 @@ def trim_for_batch_size(X, batch_size):
     n = (len(X) / batch_size)*batch_size
     return X[:n]
 
-def make_hist_and_offset(d, seq_length, batch_size, add_beats=False, add_holds=False):
+def make_hist_and_offset(d, seq_length, batch_size, use_beats=False):
     """
     build history terms and subtract min note number
     """
@@ -96,17 +96,17 @@ def make_hist_and_offset(d, seq_length, batch_size, add_beats=False, add_holds=F
     D = {'offsets': offsets, 'ranges': ranges}
 
     keys = ['train', 'test', 'valid']
-    if add_beats:
+    if use_beats:
         keys += [k + '_beats' for k in ['train', 'test', 'valid']]
         D['beat_delta'], D['n_beats'] = infer_delta_from_beats(d)
-    if add_holds:
-        keys += [k + '_holds' for k in ['train', 'test', 'valid']]
+    # if use_holds:
+    #     keys += [k + '_holds' for k in ['train', 'test', 'valid']]
 
     for k in keys:
         # add history terms
         X = add_history_and_stack_grids(d[k], seq_length)
 
-        if 'beats' not in k and 'holds' not in k:
+        if 'beats' not in k:# and 'holds' not in k:
             # shift so everything starts at 0
             ix1 = (X == SILENCE)
             ix2 = (X == DNE)
@@ -138,7 +138,7 @@ def y_to_onehot(y, num_notes):
     y = to_categorical(y, num_classes=num_notes+2)
     return y[:,1:] # remove dne col -> all zeros
 
-def make_X_and_y(D, yind, add_beats=False, add_holds=False, inds_to_zero=None):
+def make_X_and_y(D, yind, use_beats=False, use_holds=False, inds_to_zero=None):
     """
     separate X from y
     """
@@ -155,7 +155,7 @@ def make_X_and_y(D, yind, add_beats=False, add_holds=False, inds_to_zero=None):
         X[:,0,yind] = 0 # 0 -> dne
         X = X_to_onehot(X, D['ranges']+2)
 
-        if add_beats:
+        if use_beats:
             # make one-hot; append to X
             Z = D[k + '_beats'] # [n x seq_length x 1?]
             Z[Z == DNE] = 0 # no zero beat anyway
@@ -163,14 +163,15 @@ def make_X_and_y(D, yind, add_beats=False, add_holds=False, inds_to_zero=None):
             Z = X_to_onehot(Z, [D['n_beats']+1])
             X = np.dstack([X, Z])
 
-        if add_holds:
-            # handle inds_to_zero
-            Z = D[k + '_holds'] # [n x seq_length x d]
-            Z[Z == DNE] = 0 # dne and no hold treated the same
-            if inds_to_zero is not None:
-                Z[:,0,inds_to_zero] = 0 # 0 -> dne
-            Z[:,0,yind] = 0 # 0 -> dne
-            X = np.dstack([X,Z])
+        if not use_holds:
+            X = X[:,:,:-1] # remove last note column
+            # # handle inds_to_zero
+            # Z = D[k + '_holds'] # [n x seq_length x d]
+            # Z[Z == DNE] = 0 # dne and no hold treated the same
+            # if inds_to_zero is not None:
+            #     Z[:,0,inds_to_zero] = 0 # 0 -> dne
+            # Z[:,0,yind] = 0 # 0 -> dne
+            # X = np.dstack([X,Z])
 
         D['x_' + k] = X
         D['y_' + k] = y
@@ -187,7 +188,7 @@ def onehot_to_y(y, offset):
     ind[ix0] = SILENCE
     return ind
 
-def X_and_y_to_song(X, y, yind, offsets, ranges):
+def X_and_y_to_song(X, y, yind, offsets, ranges, use_holds):
     x = X[:,0,:] # drop history
     x = x[:,:ranges.sum()+4]
     voice_inds = np.hstack([i*np.ones(r+1) for i,r in enumerate(ranges)])
@@ -203,9 +204,9 @@ def X_and_y_to_song(X, y, yind, offsets, ranges):
         song.append(inds)
     return np.vstack(song).T # [n x 4]
 
-def test_songs_are_invertible(D, d, voice_num):
+def test_songs_are_invertible(D, d, voice_num, use_holds):
     song0 = np.vstack([np.vstack(x) for x in d['train']])
-    song1 = X_and_y_to_song(D['x_train'], D['y_train'], voice_num, D['offsets'], D['ranges'])
+    song1 = X_and_y_to_song(D['x_train'], D['y_train'], voice_num, D['offsets'], D['ranges'], D['use_holds'])
     assert (song0 - song1).sum() == 0
 
 def write_songs(songs):
@@ -213,19 +214,19 @@ def write_songs(songs):
         fnm = '../data/output/sample_{}.mid'.format(i)
         write_song(song, fnm, isHalfAsSlow=True)
 
-def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_length=8, batch_size=1, voices_to_zero=None, add_beats=False, add_holds=False):
+def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_length=8, batch_size=1, voices_to_zero=None, use_beats=False, use_holds=False):
     """
     load data by parts
     where you predict one part using the other parts
         plus the sequence history
     """
     d = pickle.load(open(train_file))
-    D = make_hist_and_offset(d, seq_length, batch_size, add_beats, add_holds)
-    D = make_X_and_y(D, voice_num, add_beats, add_holds, inds_to_zero=voices_to_zero)
-    test_songs_are_invertible(D, d, voice_num)
-    write_songs(d['train'][:10])
+    D = make_hist_and_offset(d, seq_length, batch_size, use_beats)
+    D = make_X_and_y(D, voice_num, use_beats, use_holds, inds_to_zero=voices_to_zero)
+    # test_songs_are_invertible(D, d, voice_num, use_holds)
+    # write_songs(d['train'][:10])
     return D
 
 if __name__ == '__main__':
     # standardize_key('../data/input/JSB Chorales_parts.pickle', '../data/input/JSB Chorales_parts_Cs1.pickle')
-    load('../data/input/JSB Chorales_parts_and_more.pickle', seq_length=2, add_beats=True, add_holds=True)
+    load('../data/input/JSB Chorales_parts_and_more.pickle', seq_length=2, use_beats=True, use_holds=True)
