@@ -23,7 +23,6 @@ def chorale_to_pianoroll(chorale, mult, nt=None, get_beats=False, hold_notes=Fal
 	if hold_notes:
 		nd += 1 # add extra note number
 	roll = np.zeros((nt, nd))
-	# is_held = False*np.ones(nt)
 	beats = np.nan*np.ones(nt)
 	for xs in xss.flat.notes: # e.g. xs is <music21.chord.Chord G4 D4 B3 G2>
 		# onset of note, in time steps
@@ -44,30 +43,11 @@ def chorale_to_pianoroll(chorale, mult, nt=None, get_beats=False, hold_notes=Fal
 		# beats[ct] = int(xs.beat*mult)*1.0/float(mult)
 		beats[ct] = xs.beat
 
-	# if roll[-1].sum() == 0: # remove last frame if empty
-	# 	roll = roll[:-1]
-	# 	beats = beats[:-1]
-	# 	is_held = is_held[:-1]
-	# if roll[0].sum() == 0: # remove first frame if empty
-	# 	roll = roll[1:]
-	# 	beats = beats[1:]
-	# 	is_held = is_held[1:]
-
 	# return desired number of outputs
 	if get_beats:
 		return roll, beats
 	else:
 		return roll
-	# if get_beats:
-	# 	if hold_notes:
-	# 		output = roll, is_held, beats
-	# 	else:
-	# 		output = roll, beats
-	# elif hold_notes:
-	# 	output = roll, is_held
-	# else:
-	# 	output = roll
-	# return output
 
 def make_beats(nbeats, start_beat, maxbeat, mult):
 	delta = 1/float(mult)
@@ -96,7 +76,6 @@ def parse_chorales_with_parts(mult, n=None):
 	songs = []
 	keys = []
 	timesigs = []
-	# Holds = []
 	Beats = []
 	for chorale in corpus.chorales.Iterator():
 		if n is not None and i >= n:
@@ -110,7 +89,6 @@ def parse_chorales_with_parts(mult, n=None):
 		maxT = 0
 		names = ['soprano', 'alto', 'tenor', 'bass']
 		all_beats = []
-		# all_holds = []
 		for part in chorale.parts:
 			ind = [x for x in names if x in str(part).lower()]
 			if not ind and i not in [5, 13, 149, 164, 166]:
@@ -118,7 +96,6 @@ def parse_chorales_with_parts(mult, n=None):
 				continue
 			roll, beats = chorale_to_pianoroll(part, mult=mult, nt=T, hold_notes=True, get_beats=True)
 			all_beats.append(beats)
-			# all_holds.append(holds)
 
 			# keep track of actual length
 			curT = np.where(roll.sum(axis=-1) > 0)[0].max()+1
@@ -135,25 +112,20 @@ def parse_chorales_with_parts(mult, n=None):
 		
 		# join beats and holds
 		beats = make_beats_from_template(all_beats, mult)
-		# holds = np.vstack(all_holds).T
 
 		# shorten if T was too long
 		beats = beats[:maxT]
-		# holds = holds[:maxT]
 		cursongs = [song[:maxT] for song in cursongs]
 
 		# combine parts (-1 means silent)
 		cursongs = [[y[0] if y else -1 for y in s] for s in zip(*cursongs)]
 		songs.append(cursongs)
-		# Holds.append(holds)
 		Beats.append(beats)
 		keys.append(key)
 		timesigs.append(timesig)
 		i += 1
 	return {'songs': songs, 'keys': keys, 'beats': Beats,
 		'timesigs': timesigs}
-	# return {'songs': songs, 'keys': keys, 'beats': Beats,
-	# 	'holds': Holds, 'timesigs': timesigs}
 
 def parse_chorales(mult):
 	"""

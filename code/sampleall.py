@@ -11,9 +11,10 @@ from chorales.sample import generate_sample, write_sample
 def main():
     basedir = '../data/models/'
     models = ['bass-1,2', 'tenor-1', 'alto']
-    sample_length = 128
+    sample_length = 64
     run_name = 'test'
     sample_dir = '../data/output/'
+    use_holds = False
 
     # start_ind = 112
     start_ind = 300
@@ -39,7 +40,7 @@ def main():
             # write only the part we were given
             write_sample(X, 0*y, P, run_name, sample_dir, margs, postfix='_{}_v0_given'.format(start_ind))
 
-        yh, Xnew = generate_sample(model, X, sample_length, margs['seq_length'], margs['y_dim'], P['ranges'], margs['voice_num'], arg_max=True)
+        yh, Xnew = generate_sample(model, X, sample_length, margs['seq_length'], margs['y_dim'], use_holds, P['ranges'], margs['voice_num'], arg_max=True)
         write_sample(X, yh, P, run_name, sample_dir, margs, postfix='_{}_v{}_pred'.format(start_ind, cur_nm))
         X = Xnew
 

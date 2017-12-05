@@ -36,9 +36,9 @@ def load_model(model_file, batch_size=1):
         margs['latent_dim_2'] = margs['latent_dim']
         margs['activation'] = 'relu'
         margs['dropout'] = 0.0
-    if 'add_beats' not in margs: # old version
-        margs['add_beats'] = False
-        margs['add_holds'] = False
+    if 'use_beats' not in margs: # old version
+        margs['use_beats'] = False
+
     model = get_model(batch_size, margs['x_dim'], margs['y_dim'], margs['seq_length'], margs['latent_dim_1'], margs['latent_dim_2'], margs['activation'], margs['dropout'], margs['optimizer'])
     model.load_weights(model_file)
     return model, margs

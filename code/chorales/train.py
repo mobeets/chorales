@@ -6,14 +6,14 @@ from utils import load_chorales
 from model import get_model
 
 def train(args):
-    P = load_chorales.load(args.train_file, args.voice_num, args.seq_length, args.batch_size, voices_to_zero=args.voices_to_zero, use_beats=args.use_beats, use_holds=args.use_holds)
+    P = load_chorales.load(args.train_file, args.voice_num, args.seq_length, args.batch_size, voices_to_zero=args.voices_to_zero, use_beats=args.use_beats)
     args.x_dim = P['x_train'].shape[-1]
     args.y_dim = P['y_train'].shape[-1]
     print "Training X with size {} to predict Y with size {}".format(P['x_train'].shape, P['y_train'].shape)
     callbacks = get_callbacks(args, patience=args.patience)
 
     model = get_model(args.batch_size, args.x_dim, args.y_dim,
-        args.seq_length, args.latent_dim_1, args.latent_dim_1,
+        args.seq_length, args.latent_dim_1, args.latent_dim_2,
         args.activation, args.dropout, args.optimizer)
 
     save_model_in_pieces(model, args)
@@ -48,8 +48,6 @@ if __name__ == '__main__':
         help='voice number to predict (0 = soprano, ..., 4 = bass)')
     parser.add_argument("--use_beats", action="store_true", 
         help="include beat info in X")
-    parser.add_argument("--use_holds", action="store_true", 
-        help="include note hold info in X")
     parser.add_argument('--latent_dim_1', type=int, default=100,
         help='latent dim 1')
     parser.add_argument('--latent_dim_2', type=int, default=10,

@@ -170,8 +170,6 @@ if __name__ == '__main__':
         default=0.0)
     parser.add_argument("--use_beats", action="store_true", 
         help="include beat info in X")
-    parser.add_argument("--use_holds", action="store_true", 
-        help="include note hold info in X")
 
     parser.add_argument('--voice_num', type=int,
         default=0, choices=range(4), 

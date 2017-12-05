@@ -42,7 +42,7 @@ class MidiWriter(object):
 
     def dump_sequence_to_midi(self, seq, output_filename,
         time_step=120, resolution=480, metronome=24, offset=21,
-        format='final'):
+        format='final', holds=None):
         if self.verbose:
             print "Dumping sequence to MIDI file: {}".format(output_filename)
             print "Resolution: {}".format(resolution)
@@ -78,9 +78,9 @@ class MidiWriter(object):
 
         tick = time_step
         self.notes_on = { n: False for n in range(self.note_range) }
-        # for seq_idx in range(188, 220):
         for seq_idx in range(time_steps):
             notes = np.nonzero(sequence[seq_idx, :])[0].tolist()
+            hold = holds[seq_idx] if holds is not None else []
             # n.b. notes += 21 ??
             # need to be in range 21,109
             notes = [n+offset for n in notes]
@@ -92,9 +92,16 @@ class MidiWriter(object):
             # go through all notes that are currently on and see if any
             # turned off
             for n in self.notes_on:
+                # if note that was on last time but is now not here
                 if self.notes_on[n] and n not in notes:
                     tick = self.note_off(n, tick)
                     self.notes_on[n] = False
+                # turn off note if not being held
+                if self.notes_on[n] and n in notes and holds is not None:
+                    is_hold = [h for h,nt in zip(hold,notes) if nt==n][0]
+                    if not is_hold:
+                        tick = self.note_off(n, tick)
+                        self.notes_on[n] = False
 
             # Turn on any notes that weren't previously on
             for note in notes:
@@ -114,11 +121,16 @@ class MidiWriter(object):
         pattern.append(self.track)
         midi.write_midifile(output_filename, pattern)
 
-def write_sample(sample, fnm, isHalfAsSlow=False):
-    if isHalfAsSlow:
-        sample = np.repeat(sample, 2, axis=0)
-    MidiWriter().dump_sequence_to_midi(sample, fnm)
+def write_sample(sample, fnm, isHalfAsSlow=False, holds=None):
+    time_step = 240 if isHalfAsSlow else 120
+    # if isHalfAsSlow:
+    #     sample = np.repeat(sample, 2, axis=0)
+    #     if holds is not None:
+    #         print "WARNING: holds are not being repeated correctly."
+    #         holds = np.repeat(holds, 2, axis=0)
+    MidiWriter().dump_sequence_to_midi(sample, fnm,
+        time_step=time_step, holds=holds)
 
-def write_song(song, fnm, offset=21, isHalfAsSlow=False):
+def write_song(song, fnm, offset=21, isHalfAsSlow=False, holds=None):
     sample = song_to_pianoroll(song, offset=offset)
-    write_sample(sample, fnm, isHalfAsSlow=isHalfAsSlow)
+    write_sample(sample, fnm, isHalfAsSlow=isHalfAsSlow, holds=holds)
