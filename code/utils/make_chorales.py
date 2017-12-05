@@ -40,8 +40,8 @@ def chorale_to_pianoroll(chorale, mult, nt=None, get_beats=False, hold_notes=Fal
 				# is_held[ct+i] = True
 
 		# quantize beat, e.g., 3.5 -> 3.0 if mult==1
-		# beats[ct] = int(xs.beat*mult)*1.0/float(mult)
-		beats[ct] = xs.beat
+		beats[ct] = int(xs.beat*mult)*1.0/float(mult)
+		# beats[ct] = xs.beat
 
 	# return desired number of outputs
 	if get_beats:
@@ -173,7 +173,7 @@ def cv_data_split(data, (tr,va,te)):
 		D['valid' + postfix] = items[te_ind:]
 	return D
 
-def main(outfile='../data/input/JSB Chorales_parts_with_holds', keep_parts=True, mult=2):
+def main(outfile='../data/input/JSB_qtr_holds', keep_parts=True, mult=1):
 	"""
 	mult == 1 means quarter notes, mult == 2 means eighth notes, etc.
 	"""

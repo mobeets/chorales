@@ -84,7 +84,8 @@ class MidiWriter(object):
                 hold = holds[seq_idx] if holds is not None else []
                 ix = notes >= 0
                 notes = notes[ix]
-                hold = hold[ix]
+                if holds is not None:
+                    hold = hold[ix]
             else:
                 notes = np.nonzero(sequence[seq_idx, :])[0].tolist()
             # n.b. notes += 21 ??

@@ -19,7 +19,7 @@ def train(args):
     save_model_in_pieces(model, args)
     history = model.fit(P['x_train'], P['y_train'],
             shuffle=True,
-            verbose=0,
+            verbose=args.verbose,
             epochs=args.num_epochs,
             batch_size=args.batch_size,
             callbacks=callbacks,
@@ -60,6 +60,8 @@ if __name__ == '__main__':
         help='dropout (proportion)')
     parser.add_argument('--patience', type=int, default=5,
         help='# of epochs, for early stopping')
+    parser.add_argument("--verbose", type=int, default=0,
+        choices=[0,1,2], help="verbose flag for training")
     parser.add_argument('--log_dir', type=str,
         default='../data/logs', help='basedir for saving log files')
     parser.add_argument('--model_dir', type=str,

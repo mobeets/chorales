@@ -230,13 +230,27 @@ def write_songs(songs):
         fnm = '../data/output/sample_{}.mid'.format(i)
         write_song(song, fnm, isHalfAsSlow=True)
 
-def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_length=8, batch_size=1, voices_to_zero=None, use_beats=False):
+def remove_songs_not_in_4_4(d):
+    for k in d.keys():
+        if 'timesigs' in k:
+            continue
+        ck = k.split('_')[0]
+        if ck + '_timesigs' not in d:
+            print 'ERROR: Training file has no time signature info.'
+            return d
+        ix = np.array(d[ck + '_timesigs']) == 4
+        d[k] = np.array(d[k])[ix].tolist()
+    return d
+
+def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_length=8, batch_size=1, voices_to_zero=None, use_beats=False, use_4_4_only=False):
     """
     load data by parts
     where you predict one part using the other parts
         plus the sequence history
     """
     d = pickle.load(open(train_file))
+    if use_4_4_only:
+        d = remove_songs_not_in_4_4(d)
     D = make_hist_and_offset(d, seq_length, batch_size, use_beats)
     D = make_X_and_y(D, voice_num, use_beats, inds_to_zero=voices_to_zero)
     # test_songs_are_invertible(D, d, voice_num)
@@ -252,4 +266,4 @@ def load(train_file='../data/input/JSB Chorales_parts.pickle', voice_num=0, seq_
 
 if __name__ == '__main__':
     # standardize_key('../data/input/JSB Chorales_parts.pickle', '../data/input/JSB Chorales_parts_Cs1.pickle')
-    load('../data/input/JSB Chorales_parts_with_holds.pickle', seq_length=2, use_beats=True)
+    D = load('../data/input/JSB_qtr_holds.pickle', seq_length=2, use_beats=False)
