@@ -46,15 +46,20 @@ def standardize_key(train_file, outfile, goalKey='C', goalKeyMin='a'):
 def find_note_ranges(d):
     mns = []
     mxs = []
+    has_holds = 0
     for k in ['train', 'test', 'valid']:
         X = np.vstack(d[k])
         X2 = X.copy()
         X2[X2 == SILENCE] = 1e4
+        X3 = X.copy()
+        X3[X3 == HOLD_NOTE] = -1e4
+        if (X == HOLD_NOTE).sum() > 0:
+            has_holds = 1
         mns.append(X2.min(axis=0))
-        mxs.append(X.max(axis=0))
+        mxs.append(X3.max(axis=0))
     mns = np.vstack(mns).min(axis=0)
     mxs = np.vstack(mxs).max(axis=0)
-    return mns, mxs-mns+1
+    return mns, mxs-mns+1+has_holds
 
 def infer_delta_from_beats(d):
     vs = []
@@ -109,9 +114,13 @@ def make_hist_and_offset(d, seq_length, batch_size, use_beats=False):
             # shift so everything starts at 0
             ix1 = (X == SILENCE)
             ix2 = (X == DNE)
+            ix3 = (X == HOLD_NOTE)
             X -= (offsets-2) # now all start at 2
             X[ix1] = 1 # -1 -> 1 for silence
             X[ix2] = 0 # -2 -> 0 for dne
+            for i in xrange(X.shape[-1]):
+                # set HOLD_NOTE to be the next highest note
+                X[:,:,i][ix3[:,:,i]] = ranges[i]+1
 
         D[k] = trim_for_batch_size(X, batch_size)
     return D
@@ -191,14 +200,18 @@ def X_and_y_to_song(X, y, yind, offsets, ranges, use_holds):
             part = x[:,voice_inds == i]
         # convert one-hot vectors to note indices
         inds = onehot_to_y(part, offset)
-        if inds[0] == HOLD_NOTE:
+        PART_HOLD_NOTE = ranges[i] + offset - 1
+        if inds[0] == PART_HOLD_NOTE:
             # if first note is hold, ignore
             inds[0] = SILENCE
-        is_hold = (inds == HOLD_NOTE)        
-        while (inds == HOLD_NOTE).sum() > 0:
-            hold_t = np.where(inds == HOLD_NOTE)[0] # hold note times
-            inds[hold_t] = inds[hold_t-1] # set to previous note
-        assert inds.max() < HOLD_NOTE
+        is_hold = (inds == PART_HOLD_NOTE)        
+        while (inds == PART_HOLD_NOTE).sum() > 0:
+            hold_t = np.where(inds == PART_HOLD_NOTE)[0] # hold note times
+            if use_holds:
+                inds[hold_t] = inds[hold_t-1] # set to previous note
+            else:
+                inds[hold_t] = HOLD_NOTE
+        assert (inds == PART_HOLD_NOTE).sum() == 0
         song.append(inds)
         holds.append(is_hold)
     if use_holds:
