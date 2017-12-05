@@ -194,10 +194,15 @@ def X_and_y_to_song(X, y, yind, offsets, ranges, use_holds):
         if inds[0] == HOLD_NOTE:
             # if first note is hold, ignore
             inds[0] = SILENCE
-        is_hold = (inds == HOLD_NOTE)
+        is_hold = (inds == HOLD_NOTE)        
         while (inds == HOLD_NOTE).sum() > 0:
             hold_t = np.where(inds == HOLD_NOTE)[0] # hold note times
             inds[hold_t] = inds[hold_t-1] # set to previous note
+        assert inds.max() < HOLD_NOTE
+        if (inds != SILENCE).sum() > 0:
+            print inds
+            print is_hold.astype(int)
+            print i, offset, inds.min(), inds.max(), is_hold.sum()
         song.append(inds)
         holds.append(is_hold)
     if use_holds:

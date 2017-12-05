@@ -42,7 +42,7 @@ class MidiWriter(object):
 
     def dump_sequence_to_midi(self, seq, output_filename,
         time_step=120, resolution=480, metronome=24, offset=21,
-        format='final', holds=None):
+        format='final', holds=None, is_song=True):
         if self.verbose:
             print "Dumping sequence to MIDI file: {}".format(output_filename)
             print "Resolution: {}".format(resolution)
@@ -79,8 +79,14 @@ class MidiWriter(object):
         tick = time_step
         self.notes_on = { n: False for n in range(self.note_range) }
         for seq_idx in range(time_steps):
-            notes = np.nonzero(sequence[seq_idx, :])[0].tolist()
-            hold = holds[seq_idx] if holds is not None else []
+            if is_song:
+                notes = sequence[seq_idx].astype(int)
+                hold = holds[seq_idx] if holds is not None else []
+                ix = notes >= 0
+                notes = notes[ix]
+                hold = hold[ix]
+            else:
+                notes = np.nonzero(sequence[seq_idx, :])[0].tolist()
             # n.b. notes += 21 ??
             # need to be in range 21,109
             notes = [n+offset for n in notes]
@@ -123,14 +129,10 @@ class MidiWriter(object):
 
 def write_sample(sample, fnm, isHalfAsSlow=False, holds=None):
     time_step = 240 if isHalfAsSlow else 120
-    # if isHalfAsSlow:
-    #     sample = np.repeat(sample, 2, axis=0)
-    #     if holds is not None:
-    #         print "WARNING: holds are not being repeated correctly."
-    #         holds = np.repeat(holds, 2, axis=0)
     MidiWriter().dump_sequence_to_midi(sample, fnm,
         time_step=time_step, holds=holds)
 
 def write_song(song, fnm, offset=21, isHalfAsSlow=False, holds=None):
-    sample = song_to_pianoroll(song, offset=offset)
-    write_sample(sample, fnm, isHalfAsSlow=isHalfAsSlow, holds=holds)
+    time_step = 240 if isHalfAsSlow else 120
+    MidiWriter().dump_sequence_to_midi(song, fnm, offset=0,
+        time_step=time_step, holds=holds, is_song=True)
